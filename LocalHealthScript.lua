@@ -3,13 +3,12 @@ local RunService = game:GetService("RunService")
 local player = game.Players.LocalPlayer
 
 local HealthFrame = script.Parent
-
 local BarFrame = HealthFrame.BarFrame
-local BarText = HealthFrame.HealthText
+local Text = HealthFrame.Text
 
-local DamageFrame = HealthFrame.PreviousFrame
+local DamageFrame = HealthFrame.DamageFrame
+
 local DamageSpeed = HealthFrame.DamageSpeed
-DamageSpeed.Value = 4
 
 local function OnCharacterAdded(character)
     local humanoid = character:WaitForChild("Humanoid")
@@ -21,18 +20,18 @@ local function OnCharacterAdded(character)
         BarFrame.Size = UDim2.new(healthScale, 0, 1, 0)
         
         local healthText = math.floor(humanoid.Health).." / "..humanoid.MaxHealth
-        BarText.Text = healthText
+        Text.Text = healthText
     end
     
-    local function UpdateDamageBar(deltaTime)
-        local damageScale = math.max(DamageFrame.Size.X.Scale - deltaTime * DamageSpeed.Value, healthScale)
+    local damageScale
+    
+    local function UpdateDamageFrame(deltaTime)
+        damageScale = math.max(DamageFrame.Size.X.Scale - deltaTime * DamageSpeed.Value, healthScale)
         DamageFrame.Size = UDim2.new(damageScale, 0, 1, 0)
     end
     
-    UpdateHealthBar()
-    
     local healthChanged = humanoid.HealthChanged:Connect(UpdateHealthBar)
-    local heartbeat = RunService.Heartbeat:Connect(UpdateDamageBar)
+    local heartbeat = RunService.Heartbeat:Connect(UpdateDamageFrame)
     
     local function OnDeath()
         healthChanged:Disconnect()
@@ -40,6 +39,11 @@ local function OnCharacterAdded(character)
     end
     
     humanoid.Died:Once(OnDeath)
+    
+    UpdateHealthBar()
+    
+    DamageFrame.Size = UDim2.new(healthScale, 0, 1, 0)
+    
 end
 
 if player.Character then
