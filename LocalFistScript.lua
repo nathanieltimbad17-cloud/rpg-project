@@ -14,28 +14,17 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local Animator = Humanoid:WaitForChild("Animator")
 
-local animations = ToolModule.LoadAnimations(FistModule.AnimationIdMap, Animator)
-
 local Fist = script.Parent
 
+local StanceMinWeight = Fist.StanceMinWeight
+local StanceThreshold = Fist.StanceThreshold
+
+local running, healthChanged
+
+local animations = ToolModule.LoadAnimations(FistModule.AnimationIdMap, Animator)
 local stanceAnimation
 
-local function Stance(speed)
-    
-    if speed > Fist.StanceThreshold then
-        ToolModule.StopAnimation(animations.Stance)
-        return
-    end
-    
-    stanceAnimation = ToolModule.GetAnimation(animations.Stance)
-    stanceAnimation.Priority = Enum.AnimationPriority.Idle
-    stanceAnimation.Looped = true
-    
-    UpdateStanceWeight()
-    
-    stanceAnimation:Play(FistModule.EquipFadeTime)
-    
-end
+local lastPunchTime = 0
 
 local function UpdateStanceWeight()
     
@@ -43,19 +32,38 @@ local function UpdateStanceWeight()
         return
     end
     
-    local stanceWeight = math.max(Humanoid.Health / Humanoid.MaxHealth, FistModule.MinStanceWeight)
+    local stanceWeight = math.max(Humanoid.Health / Humanoid.MaxHealth, StanceMinWeight.Value)
     stanceAnimation:AdjustWeight(stanceWeight)
     
 end
 
-local running, healthChanged
+local function Stance(speed)
+    
+    if speed > StanceThreshold.Value then
+        
+        ToolModule.StopAnimation(animations.Stance)
+        stanceAnimation = nil
+        
+        return
+    end
+    
+    stanceAnimation = ToolModule.GetAnimation(animations.Stance)
+    stanceAnimation.Priority = Enum.AnimationPriority.Idle
+    stanceAnimation.Looped = true
+    stanceAnimation:Play(FistModule.EquipFadeTime)
+    
+end
 
 Fist.Equipped:Connect(function()
+    
+    UpdateStanceWeight()
     
     Stance(Humanoid.MoveDirection.Magnitude)
     
     if running then
+        
         running:Disconnect()
+        
     end
     
     running = Humanoid.Running:Connect(function(speed)
@@ -65,7 +73,9 @@ Fist.Equipped:Connect(function()
     end)
     
     if healthChanged then
+        
         healthChanged:Disconnect()
+        
     end
     
     healthChanged = Humanoid.HealthChanged:Connect(function()
@@ -77,19 +87,22 @@ Fist.Equipped:Connect(function()
 end)
 
 Fist.Unequipped:Connect(function()
+    
     if running then
+        
         running:Disconnect()
+        
     end
     
     if healthChanged then
+        
         healthChanged:Disconnect()
+        
     end
     
     FistModule.StopAnimation(animations.Stance)
     
 end)
-
-local lastPunchTime = 0
 
 local function Punch()
     
