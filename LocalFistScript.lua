@@ -3,8 +3,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ToolModule = require(ReplicatedStorage.Modules.ToolModule)
 local StatModule = require(ReplicatedStorage.Modules.StatModule)
 
-local FistModule = require(ReplicatedStorage.Modules.Tools.Fist)
-
 local LocalPlayer = game.Players.LocalPlayer
 
 local Stats = LocalPlayer:WaitForChild("Stats")
@@ -14,10 +12,14 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local Animator = Humanoid:WaitForChild("Animator")
 
-local Fist = script.Parent
+local Tool = script.Parent
 
-local StanceMinWeight = Fist.StanceMinWeight
-local StanceThreshold = Fist.StanceThreshold
+local FistModule = require(Tool.FistModule)
+local StanceMinWeight = Tool.StanceMinWeight
+local StanceThreshold = Tool.StanceThreshold
+local EquipFadeTime = Tool.EquipFadeTime
+local UnequipFadeTime = Tool.UnequipFadeTime
+local BaseAttackTime = Tool.BaseAttackTime
 
 local running, healthChanged
 
@@ -50,13 +52,11 @@ local function Stance(speed)
     stanceAnimation = ToolModule.GetAnimation(animations.Stance)
     stanceAnimation.Priority = Enum.AnimationPriority.Idle
     stanceAnimation.Looped = true
-    stanceAnimation:Play(FistModule.EquipFadeTime)
+    stanceAnimation:Play(EquipFadeTime.Value)
     
 end
 
-Fist.Equipped:Connect(function()
-    
-    UpdateStanceWeight()
+Tool.Equipped:Connect(function()
     
     Stance(Humanoid.MoveDirection.Magnitude)
     
@@ -86,7 +86,7 @@ Fist.Equipped:Connect(function()
     
 end)
 
-Fist.Unequipped:Connect(function()
+Tool.Unequipped:Connect(function()
     
     if running then
         
@@ -100,7 +100,7 @@ Fist.Unequipped:Connect(function()
         
     end
     
-    FistModule.StopAnimation(animations.Stance)
+    ToolModule.StopAnimation(animations.Stance, UnequipFadeTime.Value)
     
 end)
 
@@ -109,25 +109,25 @@ local function Punch()
     local currentTime = tick()
     
     local totalAttackSpeed = StatModule.GetTotalAttackSpeed(Agility.Value)
-    local attackTime = StatModule.GetAttackTime(totalAttackSpeed, FistModule.BaseAttackTime)
+    local attackTime = StatModule.GetAttackTime(totalAttackSpeed, BaseAttackTime.Value)
     
     if currentTime - lastPunchTime < attackTime then
         return
     end
     
-    Fist.Punched:FireServer(currentTime)
+    Tool.Punched:FireServer(currentTime)
     
     local punchAnimation = ToolModule.GetAnimation(animations.Punch)
     punchAnimation.Priority = Enum.AnimationPriority.Action
     
-    local attackSpeed = FistModule.BaseAttackTime / attackTime
+    local attackSpeed = BaseAttackTime.Value / attackTime
     punchAnimation:Play(0, 0, attackSpeed)
     
     lastPunchTime = currentTime
     
 end
 
-Fist.Activated:Connect(function()
+Tool.Activated:Connect(function()
     
     FistModule.StopAnimations(animations)
     
