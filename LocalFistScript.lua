@@ -14,7 +14,7 @@ local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local Animator = Humanoid:WaitForChild("Animator")
 
-local animations = FistModule.LoadAnimations(FistModule.AnimationIdMap, Animator)
+local animations = ToolModule.LoadAnimations(FistModule.AnimationIdMap, Animator)
 
 local Fist = script.Parent
 
@@ -28,7 +28,7 @@ local function Stance(speed)
         return
     end
     
-    stanceAnimation = FistModule.GetAnimation(animations.Stance)
+    stanceAnimation = ToolModule.GetAnimation(animations.Stance)
     
     if not stanceAnimation then
         return
@@ -52,6 +52,14 @@ local function UpdateStanceWeight()
 end
 
 Fist.Equipped:Connect(function()
+    
+    if running then
+        running:Disconnect()
+    end
+    
+    if healthChanged then
+        healthChanged:Disconnect()
+    end
     
     running = Humanoid.Running:Connect(function(speed)
         
@@ -86,7 +94,7 @@ end)
 
 local function Punch(attackTime)
     
-    local punchAnimation = FistModule.GetAnimation(animations.Punch)
+    local punchAnimation = ToolModule.GetAnimation(animations.Punch)
     
     if not punchAnimation then
         return 0
