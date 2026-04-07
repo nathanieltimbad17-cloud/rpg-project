@@ -1,51 +1,123 @@
-local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ToolModule = require(ReplicatedStorage.Modules.ToolModule)
-local FistModule = require(ReplicatedStorage.Modules.Tools.Fist)
 local StatModule = require(ReplicatedStorage.Modules.StatModule)
 
-local player = Players.LocalPlayer
-local playerStats = player:WaitForChild("PlayerStats")
+local FistModule = require(ReplicatedStorage.Modules.Tools.Fist)
 
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local animator = humanoid:WaitForChild("Animator")
+local LocalPlayer = game.Players.LocalPlayer
 
-local tool = script.Parent
-local animations = ToolModule.LoadAnimation(FistModule.AnimationIdMap, animator)
+local Stats = LocalPlayer:WaitForChild("Stats")
+local Agility = Stats:WaitForChild("Agility")
 
-local backswing
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local Animator = Humanoid:WaitForChild("Animator")
 
-local function OnBackswing()
-    if backswing then
-        backswing:Disconnect()
-        backswing = nil
-    end
+local animations = FistModule.LoadAnimations(FistModule.AnimationIdMap, Animator)
+
+local Fist = script.Parent
+
+local running, healthChanged
+
+local stanceAnimation
+
+local function Stance(speed)
     
-    tool.Enabled = true
-end
-
-local function Punch()
-    tool.Enabled = false
-    
-    ToolModule.StopAnimations(animations)
-    
-    local punchAnimation = ToolModule.GetAnimation(animations.Punch)
-    
-    if not punchAnimation then
-        tool.Enabled = true
+    if speed > Fist.StanceThreshold then
         return
     end
     
-    local rate = ToolModule.GetAttackRate(playerStats)
-    local speed = ToolModule.GetAttackTime(rate)
+    stanceAnimation = FistModule.GetAnimation(animations.Stance)
     
-    tool.RemoteEvent:FireServer(tick())
+    if not stanceAnimation then
+        return
+    end
     
-    backswing = punchAnimation:GetMarkerReachedSignal("Backswing"):Connect(OnBackswing)
+    stanceAnimation.Priority = Enum.AnimationPriority.Idle
+    stanceAnimation.Looped = true
+    stanceAnimation:Play(FistModule.EquipFadeTime)
     
-    punchAnimation:Play(0, 0, speed)
 end
 
-tool.Activated:Connect(Punch)
+local function UpdateStanceWeight()
+    
+    if not stanceAnimation then
+        return
+    end
+    
+    local stanceWeight = math.max(Humanoid.Health / Humanoid.MaxHealth, FistModule.MinStanceWeight)
+    stanceAnimation:AdjustWeight(stanceWeight)
+    
+end
+
+Fist.Equipped:Connect(function()
+    
+    running = Humanoid.Running:Connect(function(speed)
+        
+        Stance(speed)
+        
+    end)
+    
+    healthChanged = Humanoid.HealthChanged:Connect(function()
+        
+        UpdateStanceWeight()
+        
+    end)
+    
+    Stance(Humanoid.MoveDirection.Magnitude)
+    
+    UpdateStanceWeight()
+    
+end)
+
+Fist.Unequipped:Connect(function()
+    if running then
+        running:Disconnect()
+    end
+    
+    if healthChanged then
+        healthChanged:Disconnect()
+    end
+    
+    FistModule.StopAnimation(animations.Stance)
+    
+end)
+
+local function Punch(attackTime)
+    
+    local punchAnimation = FistModule.GetAnimation(animations.Punch)
+    
+    if not punchAnimation then
+        return 0
+    end
+    
+    local currentTime = tick()
+    
+    Fist.Punched:FireServer(currentTime)
+    
+    local attackSpeed = FistModule.BaseAttackTime / attackTime
+    
+    punchAnimation.Priority = Enum.AnimationPriority.Action
+    punchAnimation:Play(0, 0, attackSpeed)
+    
+    return currentTime
+end
+
+local lastPunchTime = 0
+
+Fist.Activated:Connect(function()
+    local currentTime = tick()
+    
+    local totalAttackSpeed = StatModule.GetTotalAttackSpeed(Agility.Value)
+    local attackTime = StatModule.GetAttackRate(totalAttackSpeed, FistModule.BaseAttackTime)
+    
+    if currentTime - lastPunchTime < attackTime then
+        return
+    end
+    
+    FistModule.StopAnimations(animations)
+    
+    lastPunchTime = Punch(attackTime)
+    
+end)
