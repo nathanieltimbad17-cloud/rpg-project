@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local ToolModule = require(ReplicatedStorage.Modules.ToolModule)
+local AnimationModule = require(ReplicatedStorage.Modules.AnimationModule)
 local StatModule = require(ReplicatedStorage.Modules.StatModule)
 
 local LocalPlayer = game.Players.LocalPlayer
@@ -15,50 +16,41 @@ local Animator = Humanoid:WaitForChild("Animator")
 local Tool = script.Parent
 
 local FistModule = require(Tool.FistModule)
-local StanceMinWeight = Tool.StanceMinWeight
+
 local StanceThreshold = Tool.StanceThreshold
+local StanceMinWeight = Tool.StanceMinWeight
 local EquipFadeTime = Tool.EquipFadeTime
 local UnequipFadeTime = Tool.UnequipFadeTime
 local BaseAttackTime = Tool.BaseAttackTime
 
-local running, healthChanged
-
 local animations = ToolModule.LoadAnimations(FistModule.AnimationIdMap, Animator)
-local stanceAnimation
+
+local running, healthChanged
 
 local lastPunchTime = 0
 
-local function UpdateStanceWeight()
+local function AdjustStanceWeight(AnimationTrack)
     
-    if not stanceAnimation then
-        return
-    end
-    
-    local stanceWeight = math.max(Humanoid.Health / Humanoid.MaxHealth, StanceMinWeight.Value)
-    stanceAnimation:AdjustWeight(stanceWeight)
-    
-end
-
-local function Stance(speed)
-    
-    if speed > StanceThreshold.Value then
+    if Humanoid.MoveDirection.Magnitude > StanceThreshold.Value then
         
-        ToolModule.StopAnimation(animations.Stance)
-        stanceAnimation = nil
+        AnimationTrack:AdjustWeight(0)
         
         return
     end
     
-    stanceAnimation = ToolModule.GetAnimation(animations.Stance)
-    stanceAnimation.Priority = Enum.AnimationPriority.Idle
-    stanceAnimation.Looped = true
-    stanceAnimation:Play(EquipFadeTime.Value)
+    local idleWeight = math.max(Humanoid.Health / Humanoid.MaxHealth, StanceMinWeight.Value)
+    AnimationTrack:AdjustWeight(idleWeight)
     
 end
 
 Tool.Equipped:Connect(function()
     
-    Stance(Humanoid.MoveDirection.Magnitude)
+    local stanceAnimation = ToolModule.GetAnimation(animations.Stance)
+    stanceAnimation.Priority = Enum.AnimationPriority.Idle
+    stanceAnimation.Looped = true
+    
+    AdjustStanceWeight(stanceAnimation)
+    stanceAnimation:Play(EquipFadeTime.Value)
     
     if running then
         
@@ -68,7 +60,7 @@ Tool.Equipped:Connect(function()
     
     running = Humanoid.Running:Connect(function(speed)
         
-        Stance(speed)
+        AdjustStanceWeight(stanceAnimation)
         
     end)
     
@@ -80,24 +72,19 @@ Tool.Equipped:Connect(function()
     
     healthChanged = Humanoid.HealthChanged:Connect(function()
         
-        UpdateStanceWeight()
+        AdjustStanceWeight(stanceAnimation)
         
     end)
-    
 end)
 
 Tool.Unequipped:Connect(function()
     
     if running then
-        
         running:Disconnect()
-        
     end
     
     if healthChanged then
-        
         healthChanged:Disconnect()
-        
     end
     
     ToolModule.StopAnimation(animations.Stance, UnequipFadeTime.Value)
