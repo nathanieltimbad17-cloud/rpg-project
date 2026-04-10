@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local Stats = require(ReplicatedStorage.Modules.Stats)
 
@@ -14,7 +15,7 @@ local healthRegeneration = stats:WaitForChild("HealthRegeneration")
 
 local function UpdateHealth()
     local healthPercent = Stats.GetHealthPercent(humanoid)
-    humanoid.MaxHealth = Stats.GetMaxHealth(strengthPoints)
+    humanoid.MaxHealth = Stats.GetMaxHealth(strength.Value)
     humanoid.Health = humanoid.MaxHealth * healthPercent
 end
 
