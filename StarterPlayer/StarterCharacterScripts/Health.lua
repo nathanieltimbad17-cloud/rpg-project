@@ -1,24 +1,25 @@
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local character : Model = script.Parent
 local humanoid : Humanoid = character.Humanoid
 
-local player = game.Players:GetPlayerFromCharacter(character)
+local player : Player = Players:GetPlayerFromCharacter(character)
 
-local stats = player:WaitForChild("Stats")
+local stats : Folder = player:WaitForChild("Stats")
 
-local baseHealth = 120
-local maxHealthInt = stats:WaitForChild("MaxHealth")
-local maxHealthGrowth = 22
-local maxHealthChanged
+local baseHealth : number = 120
+local maxHealthInt : IntValue = stats:WaitForChild("MaxHealth")
+local maxHealthGrowth : number = 22
+local maxHealthChanged : RBXScriptConnection
 
-local baseHealthRegeneration = 60 / baseHealth
-local healthRegenerationInt = stats:WaitForChild("HealthRegeneration")
-local healthRegenerationGrowth = 0.09
-local healthRegenerationHeartbeat
+local baseHealthRegeneration : number = 60 / baseHealth
+local healthRegenerationInt : IntValue = stats:WaitForChild("HealthRegeneration")
+local healthRegenerationGrowth : number = 0.09
+local healthRegenerationHeartbeat : RBXScriptConnection
 
 local function UpdateMaxHealth()
-    local previousHealthPercentage = humanoid.Health / humanoid.MaxHealth
+    local previousHealthPercentage : number = humanoid.Health / humanoid.MaxHealth
     
     humanoid.MaxHealth = baseHealth + math.max(maxHealthInt.Value, 0) * maxHealthGrowth
     humanoid.Health = humanoid.MaxHealth * previousHealthPercentage
