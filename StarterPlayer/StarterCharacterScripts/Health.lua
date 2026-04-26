@@ -1,55 +1,52 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Stats = require(ReplicatedStorage.Modules.Stats)
+
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 
 local character = script.Parent
 
 local player = Players:GetPlayerFromCharacter(character)
 
-local stats = player:WaitForChild("Stats")
-
-local maxHealth = stats:WaitForChild("MaxHealth")
-
-local healthRegeneration = stats:WaitForChild("HealthRegeneration")
+local playerStats = Stats.Get(player)
 
 local humanoid = character.Humanoid
 
-local baseHealth = 120
-local maxHealthGrowth = 22
-
 local function UpdateMaxHealth()
-    local previousHealthPercent = humanoid.Health / humanoid.MaxHealth
+    local previousPercent = humanoid.Health / humanoid.MaxHealth
     
-    humanoid.MaxHealth = baseHealth + maxHealth.Value * maxHealthGrowth
-    humanoid.Health = humanoid.MaxHealth * previousHealthPercent
-    
+    humanoid.MaxHealth = playerStats:GetTotalMaxHealth()
+    humanoid.Health = humanoid.MaxHealth * previousPercent
 end
 
 UpdateMaxHealth()
 
-local maxHealthChanged = maxHealth.Changed:Connect(UpdateMaxHealth)
-
-local baseHealthRegeneration = 60 / baseHealth
-local healthRegenerationGrowth = 0.09
+local maxHealthChanged = playerStats.maxHealth.Changed:Connect(UpdateMaxHealth)
 
 local function UpdateHealth(deltaTime)
     if humanoid.Health > 0 and humanoid.Health < humanoid.MaxHealth then
-        local healthRegenerationRate = baseHealthRegeneration + healthRegeneration.Value * healthRegenerationGrowth
+        local healthRegenerationRate = playerStats:GetTotalHealthRegeneration() * deltaTime
         
-        humanoid.Health = math.min(humanoid.Health + healthRegenerationRate * deltaTime, humanoid.MaxHealth)
+        humanoid.Health = math.min(humanoid.Health + healthRegenerationRate, humanoid.MaxHealth)
     end
 end
 
-local function OnHeartbeat(deltaTime)
-    UpdateHealth(deltaTime)
-    
-end
+local RunService = game:GetService("RunService")
 
-local heartbeat = RunService.Heartbeat:Connect(OnHeartbeat)
+local heartbeat = RunService.Heartbeat:Connect(UpdateHealth)
 
 local function DisconnectConnections()
-    maxHealthChanged:Disconnect()
-    heartbeat:Disconnect()
+    if maxHealthChanged then
+        maxHealthChanged:Disconnect()
+        maxHealthChanged = nil
+    end
     
+    if heartbeat then
+        heartbeat:Disconnect()
+        heartbeat = nil
+    end
 end
 
 humanoid.Died:Once(DisconnectConnections)
+
+player.CharacterRemoving:Once(DisconnectConnections)
